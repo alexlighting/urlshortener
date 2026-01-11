@@ -28,12 +28,14 @@ func ShortenHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	//проверяем метод, если не POST то выдаем ошибку
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(ErrorMsg{Msg: "Method not allowed"})
 		return
 	}
 	body, error := io.ReadAll(r.Body)
 	if error != nil {
-		http.Error(w, "HTTP body read errer:", http.StatusInternalServerError)
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(ErrorMsg{Msg: fmt.Sprintf("HTTP body read error: %v", error)})
 		return
 	}
 	var req URLStorage
@@ -48,6 +50,7 @@ func ShortenHandler(w http.ResponseWriter, r *http.Request) {
 	if error != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(ErrorMsg{Msg: error.Error()})
+		return
 	}
 	//если все прошло нормально - упаковывеам данные в JSON и отправляем
 	w.WriteHeader(http.StatusCreated)
@@ -58,24 +61,23 @@ func GetOriginalHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	//проверяем метод, если не POST то выдаем ошибку
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(ErrorMsg{Msg: "Method not allowed"})
 		return
 	}
-	//выделяем путь и проверяем его на корректность
-	str := r.URL.Path
-	str = strings.TrimPrefix(str, "/")
-	str = strings.TrimSuffix(str, "/")
+	//выделяем путь
+	str := r.URL.Path[1:]
 	if strings.Contains(str, "/") {
-		fmt.Printf("incorrect path %s\n", r.URL.Path)
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode("Incorrect GET path")
+		json.NewEncoder(w).Encode(ErrorMsg{Msg: "Incorrect path"})
 		return
 	}
-	//генерируем короткий ID
+	//получаем полный URL по короткому ID
+
 	originalURL, error := shortner.GetOriginal(str)
 	if error != nil {
 		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(error.Error())
+		json.NewEncoder(w).Encode(ErrorMsg{Msg: error.Error()})
 		return
 	}
 	// w.WriteHeader(http.StatusFound)

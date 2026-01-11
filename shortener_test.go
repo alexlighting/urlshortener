@@ -12,6 +12,7 @@ func TestURLShortener_Shorten(t *testing.T) {
 	}{
 		{"валидный HTTP URL", "http://example.com", false},
 		{"валидный HTTPS URL", "https://google.com/search?q=test", false},
+		{"невалидная схема URL", "ftp://newHub.com/", true},
 		{"невалидный URL", "not-a-url", true},
 		{"невалидный URL (нет host)", "http://?q=test", true},
 		{"пустая строка", "", true},

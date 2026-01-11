@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+const MAX_STEPS = 200
+
 type URLShortener struct {
 	urls map[string]string
 	mu   sync.RWMutex
@@ -33,7 +35,17 @@ func (us *URLShortener) Shorten(originalURL string) (string, error) {
 	if !isValidURL(originalURL) {
 		return string(""), fmt.Errorf("%s is not a valid URL", originalURL)
 	}
-	shortID := generateShortID()
+	steps := 0
+	exist := true
+	shortID := ""
+	for exist {
+		shortID = generateShortID()
+		exist = us.shortExist(shortID)
+		if steps > MAX_STEPS {
+			return string(""), fmt.Errorf("Can't get unic shortID in %d steps, exit", MAX_STEPS)
+		}
+		steps++
+	}
 	us.mu.Lock()
 	us.urls[shortID] = originalURL
 	us.mu.Unlock()
@@ -50,7 +62,7 @@ func (us *URLShortener) GetOriginal(shortID string) (string, error) {
 	if exists {
 		return original, nil
 	} else {
-		return string(""), fmt.Errorf("No URL with shortID = %s\n", shortID)
+		return string(""), fmt.Errorf("No URL with shortID = %s", shortID)
 	}
 }
 
@@ -69,5 +81,12 @@ func generateShortID() string {
 func isValidURL(str string) bool {
 	// TODO: валидация URL
 	parsedUrl, err := url.Parse(str)
-	return err == nil && parsedUrl.Host != ""
+	return err == nil && parsedUrl.Host != "" && (parsedUrl.Scheme == "http" || parsedUrl.Scheme == "https")
+}
+
+func (us *URLShortener) shortExist(str string) bool {
+	us.mu.RLock()
+	_, exists := us.urls[str]
+	us.mu.RUnlock()
+	return exists
 }
